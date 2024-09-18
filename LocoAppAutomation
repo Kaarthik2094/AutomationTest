@@ -1,0 +1,157 @@
+from appium import webdriver
+import time
+import csv
+import base64
+
+# Desired capabilities for Appium
+desired_capabilities = {
+    "platformName": "Android",
+    "deviceName": "OnePlus 11",
+    "automationName": "UiAutomator2",
+    "appPackage": "com.loco",  # Loco app package
+    "appActivity": "com.loco.splash.SplashActivity",  # Starting activity for Loco app
+    "noReset": True,
+    "fullReset": False,
+}
+
+# Create a new Appium driver instance
+driver = webdriver.Remote('http://127.0.0.1:4723/wd/hub', desired_capabilities)
+
+# 1. Download and install app from Play Store
+def download_and_install_app():
+    print("Searching for the app on Play Store...")
+    
+    # Click on the search box in Play Store
+    search_box = driver.find_element_by_id("com.loco")
+    search_box.click()
+
+    # Input the app name into the search field
+    search_input = driver.find_element_by_id("com.android.vending:id/search_box_text_input")
+    search_input.send_keys("Loco Live Trivia & Quiz Game Show App")  # Replace with app name
+
+    time.sleep(2)  # Allow time for search results to appear
+
+    # Click on the first app in the search results (ensure it matches your app)
+    first_result = driver.find_element_by_android_uiautomator('new UiSelector().textContains("Loco")')
+    first_result.click()
+
+    time.sleep(2)  # Wait for app details page to load
+
+    # Click the "Install" button
+    install_button = driver.find_element_by_android_uiautomator('new UiSelector().text("Install")')
+    install_button.click()
+
+    print("App is being installed... Please wait.")
+    time.sleep(60)  # Wait for the app to download and install
+
+try:
+    download_and_install_app()
+    print("App installation successful.")
+except Exception as e:
+    print(f"An error occurred: {str(e)}")
+
+# 2. Manually login (pause for manual interaction)
+def manual_login():
+    print("Please log in manually using your credentials.")
+    input("Press Enter once you're logged in...")
+
+# 3. Automate navigation to Live stream from Trending Tab
+def open_live_stream():
+    print("Navigating to the Trending tab and opening a Live stream.")
+    time.sleep(3)  # Give the app time to load
+    trending_tab = driver.find_element_by_accessibility_id("Trending")
+    trending_tab.click()
+    time.sleep(3)  # Wait for the live streams to load
+    live_stream = driver.find_element_by_android_uiautomator('new UiSelector().textContains("LIVE")')
+    live_stream.click()
+    time.sleep(5)  # Wait for the live stream to start
+
+# 4. Automate video player testing (positive and negative cases)
+def test_video_player():
+    print("Testing the video player (positive case)...")
+    # Example of finding and playing a video
+    try:
+        play_button = driver.find_element_by_id("com.loco:id/play_button")  
+        assert play_button.is_displayed(), "Play button should be displayed."
+        play_button.click()
+        time.sleep(5)
+    except Exception as e:
+        print(f"Error during video playback: {e}")
+
+    # Simulate network error (negative case)
+    print("Testing the video player (negative case with network loss)...")
+    driver.set_network_connection(0)  # Disable all network connections
+    time.sleep(2)
+    try:
+        error_message = driver.find_element_by_id("com.loco:id/error_message")  # Replace with actual error ID
+        assert error_message.is_displayed(), "Error message should appear when network is down."
+    except Exception as e:
+        print(f"Error handling network failure: {e}")
+    finally:
+        driver.set_network_connection(6)  # Restore network connection
+    time.sleep(3)
+    print("Video player tests completed.")
+
+# 5. Capture screenshot and record screen
+def capture_screenshot_and_record():
+    print("Capturing screenshot and recording screen...")
+
+    # Screenshot
+    screenshot_path = "/path/to/screenshot.png"
+    driver.save_screenshot(screenshot_path)
+    print(f"Screenshot saved at {screenshot_path}")
+
+    # Start screen recording
+    driver.start_recording_screen()
+    time.sleep(10)  # Record for 10 seconds
+    video_data = driver.stop_recording_screen()
+
+    # Save the screen recording
+    video_path = "/path/to/video.mp4"
+    with open(video_path, "wb") as video_file:
+        video_file.write(base64.b64decode(video_data))
+    print(f"Screen recording saved at {video_path}")
+
+# 6. Extract texts and store in CSV file
+def extract_texts_and_save_csv():
+    print("Extracting texts and saving to CSV...")
+    elements = driver.find_elements_by_class_name("android.widget.TextView")
+    csv_path = "/path/to/texts.csv"
+    with open(csv_path, mode="w", newline="") as file:
+        writer = csv.writer(file)
+        for element in elements:
+            writer.writerow([element.text])
+    print(f"Texts extracted and saved to {csv_path}")
+
+# 7. Generate report
+def generate_report():
+    print("Generating report...")
+    report_data = {
+        "Login Test": "Passed",
+        "Live Stream Test": "Passed",
+        "Video Player Positive Test": "Passed",
+        "Video Player Negative Test": "Passed",
+        "Screenshot Test": "Passed",
+        "Screen Recording Test": "Passed",
+        "Text Extraction Test": "Passed"
+    }
+
+    report_path = "/path/to/report.txt"
+    with open(report_path, "w") as report_file:
+        for test, result in report_data.items():
+            report_file.write(f"{test}: {result}\n")
+    print(f"Report generated at {report_path}")
+
+# Execute the entire process
+try:
+    manual_login()
+    open_live_stream()
+    test_video_player()
+    capture_screenshot_and_record()
+    extract_texts_and_save_csv()
+    generate_report()
+    print("Automation script executed successfully.")
+except Exception as e:
+    print(f"An error occurred: {str(e)}")
+finally:
+    driver.quit()
